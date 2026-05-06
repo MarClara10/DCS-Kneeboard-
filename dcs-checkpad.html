@@ -1,0 +1,1246 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>DCS CheckPad</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #020503;
+        --panel: #06100a;
+        --panel-2: #08170d;
+        --line: #164f2d;
+        --line-soft: rgba(47, 190, 92, 0.28);
+        --text: #a8ffbd;
+        --bright: #28ff6a;
+        --muted: #4e9d66;
+        --danger: #ff5f4d;
+        --cyan: #52ffe4;
+        --amber: #ffd15a;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+      }
+
+      body {
+        background:
+          linear-gradient(rgba(40, 255, 106, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(40, 255, 106, 0.025) 1px, transparent 1px),
+          radial-gradient(circle at 52% -20%, rgba(40, 255, 106, 0.08), transparent 36%),
+          #020503;
+        background-size: 38px 38px, 38px 38px, auto;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 0;
+        padding: 0 11px;
+        color: var(--text);
+        background: rgba(6, 16, 10, 0.86);
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.72rem;
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button.is-active {
+        color: #001b08;
+        border-color: var(--bright);
+        background: var(--bright);
+      }
+
+      button.danger {
+        color: #ffd6d1;
+        border-color: rgba(255, 95, 77, 0.78);
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--bright);
+      }
+
+      input[type="color"] {
+        width: 100%;
+        height: 34px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 0;
+        background: var(--panel);
+      }
+
+      .app {
+        height: 100%;
+        display: grid;
+        grid-template-rows: 38px minmax(0, 1fr);
+      }
+
+      .command-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 5px 10px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(2, 5, 3, 0.92);
+      }
+
+      .logo {
+        margin-right: auto;
+        color: var(--bright);
+        font-weight: 900;
+        letter-spacing: 0.34em;
+        font-size: 0.86rem;
+      }
+
+      .status {
+        color: var(--muted);
+        font-size: 0.68rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .layout {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .rail {
+        min-height: 0;
+        width: 246px;
+        display: flex;
+        flex-direction: column;
+        border-left: 1px solid var(--line);
+        background: rgba(6, 16, 10, 0.72);
+        order: 2;
+        transition: width 180ms ease, opacity 180ms ease;
+      }
+
+      .rail.is-collapsed {
+        width: 0;
+        opacity: 0;
+        overflow: hidden;
+        border-left: 0;
+      }
+
+      .control-block {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .control-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .control-grid.three {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .wide {
+        grid-column: 1 / -1;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field.wide {
+        grid-column: 1 / -1;
+      }
+
+      .field span {
+        color: var(--muted);
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .page-strip {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: center;
+        padding: 14px 16px;
+        border-top: 1px solid var(--line);
+        background: rgba(2, 5, 3, 0.9);
+      }
+
+      .page-strip.hidden {
+        display: none;
+      }
+
+      .page-range {
+        height: 42px;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        background: rgba(40, 255, 106, 0.08);
+        border: 1px solid var(--line-soft);
+      }
+
+      #pageSlider {
+        height: 28px;
+        cursor: grab;
+      }
+
+      #pageSlider::-webkit-slider-runnable-track {
+        height: 8px;
+        background: rgba(40, 255, 106, 0.28);
+        border: 1px solid var(--line);
+      }
+
+      #pageSlider::-webkit-slider-thumb {
+        width: 34px;
+        height: 34px;
+        margin-top: -14px;
+        background: var(--bright);
+        border: 1px solid #b9ffca;
+        border-radius: 0;
+        -webkit-appearance: none;
+      }
+
+      .workspace {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) auto;
+        position: relative;
+      }
+
+      .viewer,
+      .notes-page {
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        padding: 14px;
+      }
+
+      .viewer {
+        display: grid;
+        place-items: start center;
+      }
+
+      .spread,
+      .page-frame,
+      .notes-frame {
+        border: 1px solid var(--line);
+        background: #000;
+        box-shadow: 0 0 0 1px rgba(40, 255, 106, 0.06), 0 24px 90px rgba(0, 0, 0, 0.7);
+      }
+
+      .spread {
+        width: min(100%, 1320px);
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1px;
+        background: var(--line);
+      }
+
+      .page-frame img {
+        display: block;
+        width: 100%;
+        height: auto;
+        -webkit-user-drag: none;
+        user-drag: none;
+        pointer-events: none;
+      }
+
+      .notes-page {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .notes-frame {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background:
+          linear-gradient(rgba(40, 255, 106, 0.12) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(40, 255, 106, 0.1) 1px, transparent 1px),
+          var(--note-bg, #06100a);
+        background-size: 24px 24px;
+      }
+
+      #notesCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+
+      #overlayCanvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      .note-tabs {
+        min-width: 0;
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+      }
+
+      .note-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 92px;
+        max-width: 160px;
+        border: 1px solid var(--line);
+        border-radius: 7px 7px 0 0;
+        background: rgba(6, 16, 10, 0.86);
+        padding-left: 10px;
+      }
+
+      .note-tab span {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .note-tab.is-active {
+        color: #001b08;
+        border-color: var(--bright);
+        background: var(--bright);
+      }
+
+      .note-tab .close {
+        min-height: 20px;
+        width: 22px;
+        padding: 0;
+        border-color: transparent;
+        background: transparent;
+        color: inherit;
+      }
+
+      .history-buttons {
+        grid-template-columns: 42px 42px minmax(0, 1fr);
+      }
+
+      .tool-toggle {
+        min-width: 58px;
+        padding: 0;
+      }
+
+      .empty {
+        width: min(420px, calc(100% - 28px));
+        margin-top: 14vh;
+        padding: 28px;
+        border: 1px dashed var(--line);
+        background: rgba(6, 16, 10, 0.62);
+        text-align: center;
+      }
+
+      .empty h1 {
+        margin: 0;
+        color: var(--bright);
+        font-size: 1.2rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      .empty p {
+        margin: 14px auto 0;
+        max-width: 460px;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 0.78rem;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 820px) {
+        .app {
+          grid-template-rows: 42px minmax(0, 1fr);
+        }
+
+        .command-bar {
+          gap: 6px;
+          overflow-x: auto;
+        }
+
+        .logo {
+          letter-spacing: 0.18em;
+          font-size: 0.78rem;
+        }
+
+        .layout {
+          grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .rail {
+          height: 100%;
+          border-bottom: 0;
+        }
+
+        .control-block {
+          padding: 8px;
+        }
+
+        .spread {
+          width: max-content;
+          min-width: 980px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="command-bar">
+        <div class="logo">DCS CHECKPAD</div>
+        <button id="toolsToggleBtn" class="tool-toggle" type="button">MENU</button>
+        <button id="checklistModeBtn" class="is-active" type="button">Checklist</button>
+        <button id="notesModeBtn" type="button">Notizen</button>
+        <span id="saveStatus" class="status">bereit</span>
+      </header>
+
+      <div class="layout">
+        <aside class="rail">
+          <div id="checklistTools" class="control-block">
+            <label>
+              <input id="fileInput" type="file" accept="image/*" multiple />
+              <button id="importBtn" class="wide" type="button">Load Package</button>
+            </label>
+            <div class="control-grid">
+              <button id="prevBtn" type="button">Prev</button>
+              <button id="nextBtn" type="button">Next</button>
+            </div>
+          </div>
+
+          <div id="notesTools" class="control-block hidden">
+            <div class="control-grid three">
+              <button class="tool is-active" data-tool="pen" type="button">Stift</button>
+              <button class="tool" data-tool="marker" type="button">Marker</button>
+              <button class="tool" data-tool="eraser" type="button">Radierer</button>
+              <button class="tool wide" data-tool="lasso" type="button">Lasso</button>
+            </div>
+
+            <label class="field wide">
+              <span>Stiftfarbe</span>
+              <input id="colorInput" type="color" value="#52ffe4" />
+            </label>
+            <label class="field wide">
+              <span>Hintergrund</span>
+              <input id="backgroundInput" type="color" value="#06100a" />
+            </label>
+            <label class="field wide">
+              <span>Stiftstaerke <b id="penSizeLabel">5</b></span>
+              <input id="penSizeInput" type="range" min="1" max="32" value="5" />
+            </label>
+            <label class="field wide">
+              <span>Radierer <b id="eraserSizeLabel">28</b></span>
+              <input id="eraserSizeInput" type="range" min="8" max="90" value="28" />
+            </label>
+            <div class="control-grid history-buttons">
+              <button id="undoBtn" type="button" aria-label="Rueckgaengig">←</button>
+              <button id="redoBtn" type="button" aria-label="Wiederholen">→</button>
+              <button id="clearNotesBtn" class="danger" type="button">Clear</button>
+            </div>
+          </div>
+
+          <div id="backupTools" class="control-block">
+            <button id="exportBtn" type="button">Backup Export</button>
+            <label>
+              <input id="backupInput" type="file" accept="application/json" />
+              <button id="importBackupBtn" type="button">Backup Import</button>
+            </label>
+          </div>
+        </aside>
+
+        <section class="workspace">
+          <div id="viewer" class="viewer">
+            <div id="emptyState" class="empty">
+              <h1>Import Checklists</h1>
+            </div>
+            <div id="pageFrame" class="spread hidden">
+              <div class="page-frame">
+                <img id="pageImageA" alt="Aktuelle Checkliste links" draggable="false" />
+              </div>
+              <div class="page-frame">
+                <img id="pageImageB" alt="Aktuelle Checkliste rechts" draggable="false" />
+              </div>
+            </div>
+          </div>
+
+          <div id="notesPage" class="notes-page hidden">
+            <div id="noteTabs" class="note-tabs"></div>
+            <div class="notes-frame">
+              <canvas id="notesCanvas" aria-label="Notizseite fuer Apple Pencil"></canvas>
+              <canvas id="overlayCanvas" aria-hidden="true"></canvas>
+            </div>
+          </div>
+
+          <div id="pageStrip" class="page-strip" aria-label="Checklisten-Navigation">
+            <div class="page-range">
+              <input id="pageSlider" type="range" min="0" max="0" value="0" />
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const DB_NAME = "dcs-checkpad";
+      const DB_VERSION = 2;
+      const PAGE_STORE = "pages";
+      const NOTE_STORE = "notes";
+
+      const els = {
+        fileInput: document.querySelector("#fileInput"),
+        importBtn: document.querySelector("#importBtn"),
+        backupInput: document.querySelector("#backupInput"),
+        importBackupBtn: document.querySelector("#importBackupBtn"),
+        exportBtn: document.querySelector("#exportBtn"),
+        checklistTools: document.querySelector("#checklistTools"),
+        backupTools: document.querySelector("#backupTools"),
+        rail: document.querySelector(".rail"),
+        toolsToggleBtn: document.querySelector("#toolsToggleBtn"),
+        pageStrip: document.querySelector("#pageStrip"),
+        pageSlider: document.querySelector("#pageSlider"),
+        pageImageA: document.querySelector("#pageImageA"),
+        pageImageB: document.querySelector("#pageImageB"),
+        pageFrame: document.querySelector("#pageFrame"),
+        emptyState: document.querySelector("#emptyState"),
+        viewer: document.querySelector("#viewer"),
+        notesPage: document.querySelector("#notesPage"),
+        noteTabs: document.querySelector("#noteTabs"),
+        notesTools: document.querySelector("#notesTools"),
+        notesCanvas: document.querySelector("#notesCanvas"),
+        overlayCanvas: document.querySelector("#overlayCanvas"),
+        notesFrame: document.querySelector(".notes-frame"),
+        saveStatus: document.querySelector("#saveStatus"),
+        checklistModeBtn: document.querySelector("#checklistModeBtn"),
+        notesModeBtn: document.querySelector("#notesModeBtn"),
+        prevBtn: document.querySelector("#prevBtn"),
+        nextBtn: document.querySelector("#nextBtn"),
+        undoBtn: document.querySelector("#undoBtn"),
+        redoBtn: document.querySelector("#redoBtn"),
+        clearNotesBtn: document.querySelector("#clearNotesBtn"),
+        colorInput: document.querySelector("#colorInput"),
+        backgroundInput: document.querySelector("#backgroundInput"),
+        penSizeInput: document.querySelector("#penSizeInput"),
+        eraserSizeInput: document.querySelector("#eraserSizeInput"),
+        penSizeLabel: document.querySelector("#penSizeLabel"),
+        eraserSizeLabel: document.querySelector("#eraserSizeLabel"),
+        tools: document.querySelectorAll(".tool"),
+      };
+
+      const notesCtx = els.notesCanvas.getContext("2d");
+      const overlayCtx = els.overlayCanvas.getContext("2d");
+      let db;
+      let pages = [];
+      let notes = [];
+      let currentIndex = 0;
+      let currentNoteIndex = 0;
+      let mode = "checklist";
+      let currentTool = "pen";
+      let isDrawing = false;
+      let lastPoint = null;
+      let undoStack = [];
+      let redoStack = [];
+      let saveTimer = 0;
+      let lasso = null;
+      let railCollapsedByMode = {
+        checklist: false,
+        notes: false,
+      };
+
+      document.addEventListener("contextmenu", (event) => event.preventDefault());
+      document.addEventListener("selectstart", (event) => event.preventDefault());
+      document.addEventListener("dragstart", (event) => event.preventDefault());
+
+      function openDb() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+          request.onupgradeneeded = () => {
+            const database = request.result;
+            if (!database.objectStoreNames.contains(PAGE_STORE)) database.createObjectStore(PAGE_STORE, { keyPath: "id" });
+            if (!database.objectStoreNames.contains(NOTE_STORE)) database.createObjectStore(NOTE_STORE, { keyPath: "id" });
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function storePut(storeName, value) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, "readwrite");
+          tx.objectStore(storeName).put(value);
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+
+      function storeDelete(storeName, id) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, "readwrite");
+          tx.objectStore(storeName).delete(id);
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+
+      function storeAll(storeName) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, "readonly");
+          const request = tx.objectStore(storeName).getAll();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function setStatus(text) {
+        els.saveStatus.textContent = text;
+      }
+
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function sortFiles(fileList) {
+        return [...fileList].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+      }
+
+      async function importFiles(fileList) {
+        const files = sortFiles(fileList).filter((file) => file.type.startsWith("image/"));
+        if (!files.length) return;
+        setStatus("loading");
+        for (const file of files) {
+          await storePut(PAGE_STORE, {
+            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            name: file.name,
+            image: await fileToDataUrl(file),
+            createdAt: Date.now(),
+          });
+        }
+        await loadPages();
+        selectPage(currentIndex);
+        setStatus("saved");
+      }
+
+      async function loadPages() {
+        pages = await storeAll(PAGE_STORE);
+        pages.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+        updatePageSlider();
+      }
+
+      function updatePageSlider() {
+        const max = Math.max(0, pages.length - 1);
+        currentIndex = Math.min(currentIndex, max);
+        els.pageSlider.max = String(max);
+        els.pageSlider.value = String(currentIndex);
+      }
+
+      function selectPage(index) {
+        if (!pages.length) {
+          currentIndex = 0;
+          els.pageFrame.classList.add("hidden");
+          els.emptyState.classList.remove("hidden");
+          updatePageSlider();
+          return;
+        }
+        currentIndex = Math.max(0, Math.min(index, pages.length - 1));
+        els.pageImageA.src = pages[currentIndex].image;
+        els.pageImageB.src = pages[currentIndex + 1] ? pages[currentIndex + 1].image : "";
+        els.pageImageB.parentElement.classList.toggle("hidden", !pages[currentIndex + 1]);
+        els.pageFrame.classList.remove("hidden");
+        els.emptyState.classList.add("hidden");
+        updatePageSlider();
+      }
+
+      async function ensureDefaultNote() {
+        if (notes.length) return;
+        const note = {
+          id: `note-${Date.now()}`,
+          title: "Note 1",
+          background: els.backgroundInput.value,
+          drawing: "",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        notes = [note];
+        await storePut(NOTE_STORE, note);
+      }
+
+      async function loadNotes() {
+        notes = await storeAll(NOTE_STORE);
+        notes = notes.filter((note) => note.id !== "main" || note.drawing);
+        notes.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        const legacy = notes.find((note) => note.id === "main");
+        if (legacy) {
+          legacy.id = `note-${Date.now()}`;
+          legacy.title = "Note 1";
+          legacy.createdAt = legacy.createdAt || Date.now();
+          await storePut(NOTE_STORE, legacy);
+          await storeDelete(NOTE_STORE, "main");
+          notes = notes.filter((note) => note.id !== "main");
+        }
+        await ensureDefaultNote();
+        renderNoteTabs();
+      }
+
+      function currentNote() {
+        return notes[currentNoteIndex];
+      }
+
+      function renderNoteTabs() {
+        els.noteTabs.innerHTML = "";
+        notes.forEach((note, index) => {
+          const tab = document.createElement("div");
+          tab.className = `note-tab${index === currentNoteIndex ? " is-active" : ""}`;
+          tab.innerHTML = `<span>&nbsp;${note.title || `Note ${index + 1}`}</span><button class="close" type="button">X</button>`;
+          tab.addEventListener("click", () => selectNote(index));
+          tab.querySelector(".close").addEventListener("click", (event) => {
+            event.stopPropagation();
+            deleteNote(index);
+          });
+          els.noteTabs.append(tab);
+        });
+        const add = document.createElement("button");
+        add.className = "note-tab";
+        add.type = "button";
+        add.textContent = "+";
+        add.addEventListener("click", addNote);
+        els.noteTabs.append(add);
+      }
+
+      async function selectNote(index) {
+        await saveNotes();
+        currentNoteIndex = Math.max(0, Math.min(index, notes.length - 1));
+        renderNoteTabs();
+        loadCurrentNoteIntoCanvas();
+      }
+
+      async function addNote() {
+        await saveNotes();
+        const note = {
+          id: `note-${Date.now()}`,
+          title: `Note ${notes.length + 1}`,
+          background: els.backgroundInput.value,
+          drawing: "",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        notes.push(note);
+        currentNoteIndex = notes.length - 1;
+        await storePut(NOTE_STORE, note);
+        renderNoteTabs();
+        loadCurrentNoteIntoCanvas();
+      }
+
+      async function deleteNote(index) {
+        if (notes.length <= 1) {
+          clearCanvas();
+          scheduleSave();
+          return;
+        }
+        const note = notes[index];
+        await storeDelete(NOTE_STORE, note.id);
+        notes.splice(index, 1);
+        currentNoteIndex = Math.max(0, Math.min(currentNoteIndex, notes.length - 1));
+        renderNoteTabs();
+        loadCurrentNoteIntoCanvas();
+      }
+
+      function setMode(nextMode) {
+        mode = nextMode;
+        const isNotes = mode === "notes";
+        els.viewer.classList.toggle("hidden", isNotes);
+        els.notesPage.classList.toggle("hidden", !isNotes);
+        els.notesTools.classList.toggle("hidden", !isNotes);
+        els.checklistTools.classList.toggle("hidden", isNotes);
+        els.pageStrip.classList.toggle("hidden", isNotes);
+        els.checklistModeBtn.classList.toggle("is-active", !isNotes);
+        els.notesModeBtn.classList.toggle("is-active", isNotes);
+        setRailCollapsed(railCollapsedByMode[mode]);
+        clearOverlay();
+        lasso = null;
+        if (isNotes) {
+          resizeNotesCanvas();
+          loadCurrentNoteIntoCanvas();
+        }
+      }
+
+      function setRailCollapsed(collapsed) {
+        railCollapsedByMode[mode] = collapsed;
+        els.rail.classList.toggle("is-collapsed", collapsed);
+      }
+
+      function toggleRail() {
+        setRailCollapsed(!railCollapsedByMode[mode]);
+      }
+
+      function resizeNotesCanvas() {
+        const rect = els.notesFrame.getBoundingClientRect();
+        const width = Math.max(900, Math.round(rect.width));
+        const height = Math.max(640, Math.round(rect.height));
+        if (els.notesCanvas.width === width && els.notesCanvas.height === height) return;
+        const drawing = els.notesCanvas.width ? els.notesCanvas.toDataURL("image/png") : currentNote()?.drawing;
+        els.notesCanvas.width = width;
+        els.notesCanvas.height = height;
+        els.overlayCanvas.width = width;
+        els.overlayCanvas.height = height;
+        clearCanvas();
+        if (drawing) drawSavedNote(drawing);
+      }
+
+      function loadCurrentNoteIntoCanvas() {
+        const note = currentNote();
+        if (!note) return;
+        resetHistory();
+        els.backgroundInput.value = note.background || "#06100a";
+        setNoteBackground(els.backgroundInput.value);
+        clearCanvas();
+        clearOverlay();
+        lasso = null;
+        if (note.drawing) drawSavedNote(note.drawing);
+      }
+
+      function resetHistory() {
+        undoStack = [];
+        redoStack = [];
+      }
+
+      function clearCanvas() {
+        notesCtx.clearRect(0, 0, els.notesCanvas.width, els.notesCanvas.height);
+      }
+
+      function clearOverlay() {
+        overlayCtx.clearRect(0, 0, els.overlayCanvas.width, els.overlayCanvas.height);
+      }
+
+      function setNoteBackground(color) {
+        els.notesFrame.style.setProperty("--note-bg", color);
+      }
+
+      function drawSavedNote(dataUrl) {
+        const image = new Image();
+        image.onload = () => notesCtx.drawImage(image, 0, 0, els.notesCanvas.width, els.notesCanvas.height);
+        image.src = dataUrl;
+      }
+
+      function scheduleSave() {
+        window.clearTimeout(saveTimer);
+        setStatus("saving");
+        saveTimer = window.setTimeout(saveNotes, 220);
+      }
+
+      async function saveNotes() {
+        if (!db || !currentNote()) return;
+        const note = currentNote();
+        note.background = els.backgroundInput.value;
+        note.drawing = els.notesCanvas.toDataURL("image/png");
+        note.updatedAt = Date.now();
+        await storePut(NOTE_STORE, note);
+        setStatus("saved");
+      }
+
+      function pointerToCanvas(event) {
+        const rect = els.notesCanvas.getBoundingClientRect();
+        return {
+          x: ((event.clientX - rect.left) / rect.width) * els.notesCanvas.width,
+          y: ((event.clientY - rect.top) / rect.height) * els.notesCanvas.height,
+        };
+      }
+
+      function allowDrawing(event) {
+        if (event.pointerType === "touch") return false;
+        if (navigator.maxTouchPoints > 0) return event.pointerType === "pen";
+        return event.pointerType === "pen" || event.pointerType === "mouse";
+      }
+
+      function pushUndo() {
+        undoStack.push(notesCtx.getImageData(0, 0, els.notesCanvas.width, els.notesCanvas.height));
+        if (undoStack.length > 20) undoStack.shift();
+        redoStack = [];
+      }
+
+      function restoreSnapshot(snapshot) {
+        notesCtx.putImageData(snapshot, 0, 0);
+        lasso = null;
+        clearOverlay();
+        scheduleSave();
+      }
+
+      function undo() {
+        const previous = undoStack.pop();
+        if (!previous) return;
+        redoStack.push(notesCtx.getImageData(0, 0, els.notesCanvas.width, els.notesCanvas.height));
+        restoreSnapshot(previous);
+      }
+
+      function redo() {
+        const next = redoStack.pop();
+        if (!next) return;
+        undoStack.push(notesCtx.getImageData(0, 0, els.notesCanvas.width, els.notesCanvas.height));
+        restoreSnapshot(next);
+      }
+
+      function boundsFromPath(path) {
+        const xs = path.map((p) => p.x);
+        const ys = path.map((p) => p.y);
+        const x = Math.max(0, Math.floor(Math.min(...xs)));
+        const y = Math.max(0, Math.floor(Math.min(...ys)));
+        const right = Math.min(els.notesCanvas.width, Math.ceil(Math.max(...xs)));
+        const bottom = Math.min(els.notesCanvas.height, Math.ceil(Math.max(...ys)));
+        return { x, y, width: Math.max(1, right - x), height: Math.max(1, bottom - y) };
+      }
+
+      function pathContains(point, path) {
+        let inside = false;
+        for (let i = 0, j = path.length - 1; i < path.length; j = i++) {
+          const xi = path[i].x;
+          const yi = path[i].y;
+          const xj = path[j].x;
+          const yj = path[j].y;
+          const intersect = yi > point.y !== yj > point.y && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+          if (intersect) inside = !inside;
+        }
+        return inside;
+      }
+
+      function drawPathOutline(path, offsetX = 0, offsetY = 0) {
+        clearOverlay();
+        if (path.length < 2) return;
+        overlayCtx.save();
+        overlayCtx.strokeStyle = "#ffffff";
+        overlayCtx.lineWidth = 2;
+        overlayCtx.setLineDash([10, 8]);
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(path[0].x + offsetX, path[0].y + offsetY);
+        path.slice(1).forEach((point) => overlayCtx.lineTo(point.x + offsetX, point.y + offsetY));
+        overlayCtx.closePath();
+        overlayCtx.stroke();
+        overlayCtx.restore();
+      }
+
+      function drawEraserCursor(point) {
+        if (currentTool !== "eraser") return;
+        clearOverlay();
+        overlayCtx.save();
+        overlayCtx.strokeStyle = "#ffffff";
+        overlayCtx.lineWidth = 2;
+        overlayCtx.beginPath();
+        overlayCtx.arc(point.x, point.y, Number(els.eraserSizeInput.value) / 2, 0, Math.PI * 2);
+        overlayCtx.stroke();
+        overlayCtx.restore();
+      }
+
+      function makeMaskedSelection(path) {
+        const rect = boundsFromPath(path);
+        const source = notesCtx.getImageData(rect.x, rect.y, rect.width, rect.height);
+        const selected = new ImageData(new Uint8ClampedArray(source.data), rect.width, rect.height);
+        const selectedCanvas = document.createElement("canvas");
+        selectedCanvas.width = rect.width;
+        selectedCanvas.height = rect.height;
+        const maskCanvas = document.createElement("canvas");
+        maskCanvas.width = rect.width;
+        maskCanvas.height = rect.height;
+        const maskCtx = maskCanvas.getContext("2d");
+        maskCtx.fillStyle = "#fff";
+        maskCtx.beginPath();
+        maskCtx.moveTo(path[0].x - rect.x, path[0].y - rect.y);
+        path.slice(1).forEach((point) => maskCtx.lineTo(point.x - rect.x, point.y - rect.y));
+        maskCtx.closePath();
+        maskCtx.fill();
+        const mask = maskCtx.getImageData(0, 0, rect.width, rect.height).data;
+        for (let i = 0; i < selected.data.length; i += 4) {
+          if (mask[i + 3] === 0 || selected.data[i + 3] === 0) selected.data[i + 3] = 0;
+        }
+        const base = notesCtx.getImageData(0, 0, els.notesCanvas.width, els.notesCanvas.height);
+        for (let y = 0; y < rect.height; y += 1) {
+          for (let x = 0; x < rect.width; x += 1) {
+            const selectedIndex = (y * rect.width + x) * 4;
+            if (selected.data[selectedIndex + 3] > 0) {
+              const baseIndex = ((rect.y + y) * els.notesCanvas.width + rect.x + x) * 4;
+              base.data[baseIndex + 3] = 0;
+            }
+          }
+        }
+        selectedCanvas.getContext("2d").putImageData(selected, 0, 0);
+        return { rect, selectedCanvas, base, path, offset: { x: 0, y: 0 } };
+      }
+
+      function drawSelection(selection, x, y) {
+        notesCtx.save();
+        notesCtx.globalCompositeOperation = "source-over";
+        notesCtx.globalAlpha = 1;
+        notesCtx.drawImage(selection.selectedCanvas, x, y);
+        notesCtx.restore();
+      }
+
+      function configureStroke() {
+        const penSize = Number(els.penSizeInput.value);
+        const eraserSize = Number(els.eraserSizeInput.value);
+        notesCtx.lineCap = "round";
+        notesCtx.lineJoin = "round";
+        notesCtx.globalAlpha = currentTool === "marker" ? 0.28 : 1;
+        notesCtx.globalCompositeOperation = currentTool === "eraser" ? "destination-out" : "source-over";
+        notesCtx.lineWidth = currentTool === "eraser" ? eraserSize : currentTool === "marker" ? penSize * 3 : penSize;
+        notesCtx.strokeStyle = els.colorInput.value;
+        notesCtx.fillStyle = els.colorInput.value;
+      }
+
+      function resetStroke() {
+        notesCtx.globalAlpha = 1;
+        notesCtx.globalCompositeOperation = "source-over";
+      }
+
+      function drawPoint(point) {
+        configureStroke();
+        notesCtx.beginPath();
+        notesCtx.arc(point.x, point.y, notesCtx.lineWidth / 2, 0, Math.PI * 2);
+        notesCtx.fill();
+        resetStroke();
+      }
+
+      function drawLine(from, to) {
+        configureStroke();
+        notesCtx.beginPath();
+        notesCtx.moveTo(from.x, from.y);
+        notesCtx.lineTo(to.x, to.y);
+        notesCtx.stroke();
+        resetStroke();
+      }
+
+      function startDrawing(event) {
+        if (mode !== "notes" || !allowDrawing(event)) return;
+        event.preventDefault();
+        els.notesCanvas.setPointerCapture(event.pointerId);
+        isDrawing = true;
+        lastPoint = pointerToCanvas(event);
+
+        if (currentTool === "lasso") {
+          if (lasso?.selectedCanvas && pathContains({ x: lastPoint.x - lasso.offset.x, y: lastPoint.y - lasso.offset.y }, lasso.path)) {
+            lasso.mode = "move";
+            lasso.dragStart = lastPoint;
+            pushUndo();
+            return;
+          }
+          lasso = { mode: "select", path: [lastPoint] };
+          drawPathOutline(lasso.path);
+          return;
+        }
+
+        lasso = null;
+        clearOverlay();
+        pushUndo();
+        drawPoint(lastPoint);
+        drawEraserCursor(lastPoint);
+      }
+
+      function moveDrawing(event) {
+        const point = pointerToCanvas(event);
+        if (!isDrawing) {
+          drawEraserCursor(point);
+          return;
+        }
+        if (!lastPoint || !allowDrawing(event)) return;
+        event.preventDefault();
+
+        if (currentTool === "lasso" && lasso?.mode === "select") {
+          lasso.path.push(point);
+          drawPathOutline(lasso.path);
+          lastPoint = point;
+          return;
+        }
+
+        if (currentTool === "lasso" && lasso?.mode === "move" && lasso.selectedCanvas) {
+          lasso.offset = { x: point.x - lasso.dragStart.x, y: point.y - lasso.dragStart.y };
+          notesCtx.putImageData(lasso.base, 0, 0);
+          drawSelection(lasso, lasso.rect.x + lasso.offset.x, lasso.rect.y + lasso.offset.y);
+          drawPathOutline(lasso.path, lasso.offset.x, lasso.offset.y);
+          lastPoint = point;
+          return;
+        }
+
+        drawLine(lastPoint, point);
+        drawEraserCursor(point);
+        lastPoint = point;
+      }
+
+      function stopDrawing(event) {
+        if (!isDrawing) return;
+        if (event && els.notesCanvas.hasPointerCapture(event.pointerId)) els.notesCanvas.releasePointerCapture(event.pointerId);
+        isDrawing = false;
+        lastPoint = null;
+
+        if (currentTool === "lasso" && lasso?.mode === "select") {
+          if (lasso.path.length > 6) {
+            lasso = { ...makeMaskedSelection(lasso.path), mode: "ready" };
+            drawPathOutline(lasso.path);
+          } else {
+            lasso = null;
+            clearOverlay();
+          }
+          return;
+        }
+
+        if (currentTool === "lasso" && lasso?.mode === "move") {
+          lasso.rect = { ...lasso.rect, x: lasso.rect.x + lasso.offset.x, y: lasso.rect.y + lasso.offset.y };
+          lasso.path = lasso.path.map((point) => ({ x: point.x + lasso.offset.x, y: point.y + lasso.offset.y }));
+          lasso = { ...makeMaskedSelection(lasso.path), mode: "ready" };
+          drawPathOutline(lasso.path);
+          scheduleSave();
+          return;
+        }
+
+        scheduleSave();
+      }
+
+      function setTool(tool) {
+        currentTool = tool;
+        lasso = null;
+        clearOverlay();
+        els.tools.forEach((button) => button.classList.toggle("is-active", button.dataset.tool === tool));
+      }
+
+      async function exportBackup() {
+        await saveNotes();
+        const backup = { version: 3, exportedAt: new Date().toISOString(), pages: await storeAll(PAGE_STORE), notes: await storeAll(NOTE_STORE) };
+        const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `dcs-checkpad-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+
+      async function importBackup(file) {
+        if (!file) return;
+        const backup = JSON.parse(await file.text());
+        if (!Array.isArray(backup.pages)) return;
+        setStatus("import");
+        for (const page of backup.pages) await storePut(PAGE_STORE, page);
+        for (const note of backup.notes || backup.pageData || []) {
+          await storePut(NOTE_STORE, {
+            id: note.id === "main" ? `note-${Date.now()}` : note.id,
+            title: note.title || "Note",
+            background: note.background || els.backgroundInput.value,
+            drawing: note.drawing || "",
+            createdAt: note.createdAt || Date.now(),
+            updatedAt: Date.now(),
+          });
+        }
+        await loadPages();
+        await loadNotes();
+        selectPage(0);
+        loadCurrentNoteIntoCanvas();
+        setStatus("saved");
+      }
+
+      els.importBtn.addEventListener("click", () => els.fileInput.click());
+      els.fileInput.addEventListener("change", () => importFiles(els.fileInput.files));
+      els.importBackupBtn.addEventListener("click", () => els.backupInput.click());
+      els.backupInput.addEventListener("change", () => importBackup(els.backupInput.files[0]));
+      els.exportBtn.addEventListener("click", exportBackup);
+      els.prevBtn.addEventListener("click", () => selectPage(currentIndex - 1));
+      els.nextBtn.addEventListener("click", () => selectPage(currentIndex + 1));
+      els.pageSlider.addEventListener("input", () => selectPage(Number(els.pageSlider.value)));
+      els.checklistModeBtn.addEventListener("click", () => setMode("checklist"));
+      els.notesModeBtn.addEventListener("click", () => setMode("notes"));
+      els.toolsToggleBtn.addEventListener("click", toggleRail);
+      els.tools.forEach((button) => button.addEventListener("click", () => setTool(button.dataset.tool)));
+
+      els.penSizeInput.addEventListener("input", () => {
+        els.penSizeLabel.textContent = els.penSizeInput.value;
+      });
+      els.eraserSizeInput.addEventListener("input", () => {
+        els.eraserSizeLabel.textContent = els.eraserSizeInput.value;
+      });
+      els.backgroundInput.addEventListener("input", () => {
+        setNoteBackground(els.backgroundInput.value);
+        scheduleSave();
+      });
+      els.undoBtn.addEventListener("click", undo);
+      els.redoBtn.addEventListener("click", redo);
+      els.clearNotesBtn.addEventListener("click", () => {
+        pushUndo();
+        clearCanvas();
+        clearOverlay();
+        lasso = null;
+        scheduleSave();
+      });
+
+      els.notesCanvas.addEventListener("pointerdown", startDrawing);
+      els.notesCanvas.addEventListener("pointermove", moveDrawing);
+      els.notesCanvas.addEventListener("pointerleave", () => {
+        if (!isDrawing && currentTool === "eraser") clearOverlay();
+      });
+      els.notesCanvas.addEventListener("pointerup", stopDrawing);
+      els.notesCanvas.addEventListener("pointercancel", stopDrawing);
+
+      window.addEventListener("resize", () => {
+        if (mode === "notes") resizeNotesCanvas();
+      });
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft") selectPage(currentIndex - 1);
+        if (event.key === "ArrowRight") selectPage(currentIndex + 1);
+        if (event.key.toLowerCase() === "n") setMode("notes");
+        if (event.key.toLowerCase() === "c") setMode("checklist");
+        if (event.key.toLowerCase() === "z" && (event.ctrlKey || event.metaKey) && !event.shiftKey) undo();
+        if ((event.key.toLowerCase() === "y" && (event.ctrlKey || event.metaKey)) || (event.key.toLowerCase() === "z" && (event.ctrlKey || event.metaKey) && event.shiftKey)) redo();
+      });
+
+      openDb()
+        .then(async (database) => {
+          db = database;
+          await loadPages();
+          await loadNotes();
+          selectPage(0);
+          resizeNotesCanvas();
+          loadCurrentNoteIntoCanvas();
+          setMode("checklist");
+          setStatus("ready");
+        })
+        .catch(() => setStatus("db error"));
+    </script>
+  </body>
+</html>
